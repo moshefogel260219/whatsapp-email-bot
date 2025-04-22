@@ -21,10 +21,7 @@ def send_email(subject, body, media_url=None, media_type=None):
         plain_text_content=body,
     )
 
-    if media_url:
-        response = requests.get(media_url)
-
-file_data = response.content
+    
 
 if media_url:
     response = requests.get(media_url, auth=HTTPBasicAuth(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN))
