@@ -28,9 +28,9 @@ file_data = response.content
 
 if media_url:
     response = requests.get(media_url, auth=HTTPBasicAuth(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN))
-print(f"Status: {response.status_code}")
-print(f"Headers: {response.headers}")
-print(f"Content length: {len(response.content)}")
+    print(f"Status: {response.status_code}")
+    print(f"Headers: {response.headers}")
+    print(f"Content length: {len(response.content)}")
     if response.status_code != 200:
         print(f"Failed to fetch media: {response.status_code}")
     else:
