@@ -22,7 +22,12 @@ def send_email(subject, body, media_url=None, media_type=None):
     )
 
     if media_url:
-        file_data = requests.get(media_url).content
+        response = requests.get(media_url)
+print(f"Status: {response.status_code}")
+print(f"Headers: {response.headers}")
+print(f"Content length: {len(response.content)}")
+file_data = response.content
+
         encoded_file = base64.b64encode(file_data).decode()
         attachment = Attachment(
             FileContent(encoded_file),
@@ -62,4 +67,6 @@ if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+print(f"Media URL: {media_url}")
+print(f"Media Type: {media_type}")
 
