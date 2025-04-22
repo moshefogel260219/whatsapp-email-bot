@@ -1,36 +1,39 @@
 
 from flask import Flask, request
-import requests
 import os
+import requests
 from datetime import datetime
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
+import base64
 
 app = Flask(__name__)
 
 TO_EMAIL = os.getenv("TO_EMAIL")
-MAILGUN_DOMAIN = os.getenv("MAILGUN_DOMAIN")
-MAILGUN_API_KEY = os.getenv("MAILGUN_API_KEY")
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+FROM_EMAIL = os.getenv("FROM_EMAIL")
 
-def send_email(subject, body, attachment_url=None, attachment_filename=None):
-    data = {
-        "from": f"WhatsApp Bot <bot@{MAILGUN_DOMAIN}>",
-        "to": [TO_EMAIL],
-        "subject": subject,
-        "text": body
-    }
-
-    files = None
-    if attachment_url and attachment_filename:
-        # Download the media
-        file_response = requests.get(attachment_url)
-        if file_response.status_code == 200:
-            files = [("attachment", (attachment_filename, file_response.content))]
-
-    return requests.post(
-        f"https://api.mailgun.net/v3/{MAILGUN_DOMAIN}/messages",
-        auth=("api", MAILGUN_API_KEY),
-        data=data,
-        files=files
+def send_email(subject, body, media_url=None, media_type=None):
+    message = Mail(
+        from_email=FROM_EMAIL,
+        to_emails=TO_EMAIL,
+        subject=subject,
+        plain_text_content=body,
     )
+
+    if media_url:
+        file_data = requests.get(media_url).content
+        encoded_file = base64.b64encode(file_data).decode()
+        attachment = Attachment(
+            FileContent(encoded_file),
+            FileName("attachment." + media_type.split("/")[-1]),
+            FileType(media_type),
+            Disposition("attachment")
+        )
+        message.attachment = attachment
+
+    sg = SendGridAPIClient(SENDGRID_API_KEY)
+    sg.send(message)
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_webhook():
@@ -39,21 +42,19 @@ def whatsapp_webhook():
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     num_media = int(request.form.get("NumMedia", "0"))
-    attachment_url = None
-    attachment_filename = None
+    media_url = None
+    media_type = None
 
     if num_media > 0:
-        attachment_url = request.form.get("MediaUrl0")
-        attachment_filename = request.form.get("MediaContentType0", "file").split("/")[-1]
-        if not attachment_filename:
-            attachment_filename = "attachment"
+        media_url = request.form.get("MediaUrl0")
+        media_type = request.form.get("MediaContentType0")
 
     subject = f"New WhatsApp Message from {sender}"
     body = f"Time: {timestamp}\nFrom: {sender}\nMessage: {message}"
 
-    send_email(subject, body, attachment_url, attachment_filename)
+    send_email(subject, body, media_url, media_type)
 
     return "OK", 200
 
 if __name__ == "__main__":
-    app.run(port=5000)
+    app.run()
