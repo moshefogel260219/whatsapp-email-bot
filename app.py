@@ -28,7 +28,23 @@ print(f"Headers: {response.headers}")
 print(f"Content length: {len(response.content)}")
 file_data = response.content
 
+if media_url:
+    response = requests.get(media_url, auth=HTTPBasicAuth(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN))
+
+    if response.status_code != 200:
+        print(f"Failed to fetch media: {response.status_code}")
+    else:
+        file_data = response.content
         encoded_file = base64.b64encode(file_data).decode()
+
+        attachment = Attachment(
+            FileContent(encoded_file),
+            FileName("attachment." + media_type.split("/")[-1]),
+            FileType(media_type),
+            Disposition("attachment")
+        )
+        message.attachment = attachment
+
         attachment = Attachment(
             FileContent(encoded_file),
             FileName("attachment." + media_type.split("/")[-1]),
