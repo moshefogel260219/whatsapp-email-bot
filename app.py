@@ -5,13 +5,18 @@ import requests
 from datetime import datetime
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
+from requests.auth import HTTPBasicAuth
 import base64
 
 app = Flask(__name__)
 
+# Environment variables
 TO_EMAIL = os.getenv("TO_EMAIL")
-SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 FROM_EMAIL = os.getenv("FROM_EMAIL")
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+
 
 def send_email(subject, body, media_url=None, media_type=None):
     message = Mail(
@@ -21,37 +26,30 @@ def send_email(subject, body, media_url=None, media_type=None):
         plain_text_content=body,
     )
 
-    
+    if media_url:
+        response = requests.get(media_url, auth=HTTPBasicAuth(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN))
 
-if media_url:
-    response = requests.get(media_url, auth=HTTPBasicAuth(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN))
-    print(f"Status: {response.status_code}")
-    print(f"Headers: {response.headers}")
-    print(f"Content length: {len(response.content)}")
-    if response.status_code != 200:
-        print(f"Failed to fetch media: {response.status_code}")
-    else:
-        file_data = response.content
-        encoded_file = base64.b64encode(file_data).decode()
+        print(f"Status: {response.status_code}")
+        print(f"Headers: {response.headers}")
+        print(f"Content length: {len(response.content)}")
 
-        attachment = Attachment(
-            FileContent(encoded_file),
-            FileName("attachment." + media_type.split("/")[-1]),
-            FileType(media_type),
-            Disposition("attachment")
-        )
-        message.attachment = attachment
+        if response.status_code != 200:
+            print(f"Failed to fetch media: {response.status_code}")
+        else:
+            file_data = response.content
+            encoded_file = base64.b64encode(file_data).decode()
 
-        attachment = Attachment(
-            FileContent(encoded_file),
-            FileName("attachment." + media_type.split("/")[-1]),
-            FileType(media_type),
-            Disposition("attachment")
-        )
-        message.attachment = attachment
+            attachment = Attachment(
+                FileContent(encoded_file),
+                FileName("attachment." + media_type.split("/")[-1]),
+                FileType(media_type),
+                Disposition("attachment")
+            )
+            message.attachment = attachment
 
     sg = SendGridAPIClient(SENDGRID_API_KEY)
     sg.send(message)
+
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_webhook():
@@ -74,10 +72,7 @@ def whatsapp_webhook():
 
     return "OK", 200
 
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
-if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
