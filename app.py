@@ -1,71 +1,75 @@
 from flask import Flask, request
-import os, requests, base64
+import os, base64, requests
 from datetime import datetime
+from requests.auth import HTTPBasicAuth
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
-from requests.auth import HTTPBasicAuth
 
 app = Flask(__name__)
 
-# ─── env vars ─────────────────────────────────────────────────────────────────
-TO_EMAIL          = os.getenv("TO_EMAIL")
-FROM_EMAIL        = os.getenv("FROM_EMAIL")
-SENDGRID_API_KEY  = os.getenv("SENDGRID_API_KEY")
-TWILIO_ACCOUNT_SID  = os.getenv("TWILIO_ACCOUNT_SID")
-TWILIO_AUTH_TOKEN   = os.getenv("TWILIO_AUTH_TOKEN")
-# ──────────────────────────────────────────────────────────────────────────────
+# --- env ---
+TO_EMAIL           = os.getenv("TO_EMAIL")
+FROM_EMAIL         = os.getenv("FROM_EMAIL")
+SENDGRID_API_KEY   = os.getenv("SENDGRID_API_KEY")
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN  = os.getenv("TWILIO_AUTH_TOKEN")
 
 
+# ---------- helpers ----------
 def send_email(subject, body, media_url=None, media_type=None):
-    """Send e-mail (optionally with attachment) via SendGrid"""
-    message = Mail(
-        from_email=FROM_EMAIL,
-        to_emails=TO_EMAIL,
-        subject=subject,
-        plain_text_content=body,
-    )
+    """build & send email (optionally with attachment) via SendGrid"""
+    msg = Mail(from_email=FROM_EMAIL,
+               to_emails=TO_EMAIL,
+               subject=subject,
+               plain_text_content=body)
 
     if media_url:
-        resp = requests.get(media_url,
-                            auth=HTTPBasicAuth(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN))
-        print(f"[media] status={resp.status_code} len={len(resp.content)}")
-        if resp.status_code == 200:
-            encoded = base64.b64encode(resp.content).decode()
-            message.attachment = Attachment(
+        r = requests.get(media_url, auth=HTTPBasicAuth(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN))
+        print(f"[Fetch media] status={r.status_code} len={len(r.content)} url={media_url}")
+
+        if r.ok and r.content:
+            encoded = base64.b64encode(r.content).decode()
+            fname   = "attachment." + media_type.split("/")[-1]
+            msg.attachment = Attachment(
                 FileContent(encoded),
-                FileName("attachment." + media_type.split("/")[-1]),
+                FileName(fname),
                 FileType(media_type),
-                Disposition("attachment"),
+                Disposition("attachment")
             )
         else:
-            print(f"[media] failed to fetch media: {resp.status_code}")
+            print("[!] media fetch failed – attachment skipped")
 
-    SendGridAPIClient(SENDGRID_API_KEY).send(message)
-    print("📧  e-mail sent")
+    SendGridAPIClient(SENDGRID_API_KEY).send(msg)
+    print("✅ email sent")
 
 
+# ---------- webhook ----------
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_webhook():
-    print("📥 webhook triggered ----------------------------")
-    for k in request.form:
-        print(f"{k} => {request.form[k]}")
-    print("-----------------------------------------------")
+    print("📥 webhook triggered")
+    print("------ request.form ------")
+    for k, v in request.form.items():
+        print(f"{k}: {v}")
+    print("--------------------------")
 
-    sender   = request.form.get("From", "")
-    body_txt = request.form.get("Body", "")
-    ts       = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    num_media = int(request.form.get("NumMedia", 0))
+    num_media = int(request.form.get("NumMedia", "0"))
     media_url = request.form.get("MediaUrl0") if num_media else None
-    media_type= request.form.get("MediaContentType0") if num_media else None
+    media_type = request.form.get("MediaContentType0") if num_media else None
 
-    subject = f"New WhatsApp Message from {sender}"
-    body    = f"Time: {ts}\nFrom: {sender}\nMessage: {body_txt}"
+    print(f"NumMedia={num_media} url={media_url} type={media_type}")
 
-    send_email(subject, body, media_url, media_type)
+    sender    = request.form.get("From", "")
+    text      = request.form.get("Body", "")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    subj = f"New WhatsApp Message from {sender}"
+    body = f"Time: {timestamp}\nFrom: {sender}\nMessage: {text or '[no text]'}"
+
+    send_email(subj, body, media_url, media_type)
     return "OK", 200
 
 
+# ---------- local run ----------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
