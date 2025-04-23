@@ -56,14 +56,15 @@ def send_email(subject, body, media_url=None, media_type=None):
     print(f"SendGrid response code: {response.status_code}")
     print(f"NumMedia: {request.form.get('NumMedia')}")
     print(f"SendGrid response body: {response.body}")
-print("------ Full request.form ------")
+    
+@app.route("/whatsapp", methods=["POST"])
+def whatsapp_webhook():
+    print("------ Full request.form ------")
 for key in request.form:
     print(f"{key} => {request.form[key]}")
     print("-------------------------------")
     print(f"Content length: {len(response.content)} bytes")
 
-@app.route("/whatsapp", methods=["POST"])
-def whatsapp_webhook():
     print("========== NEW WHATSAPP MESSAGE ==========")
     print(f"NumMedia: {request.form.get('NumMedia')}")
     print(f"MediaUrl0: {request.form.get('MediaUrl0')}")
