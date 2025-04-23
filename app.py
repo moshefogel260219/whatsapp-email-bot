@@ -54,6 +54,7 @@ def send_email(subject, body, media_url=None, media_type=None):
     sg = SendGridAPIClient(SENDGRID_API_KEY)
     response = sg.send(message)
     print(f"SendGrid response code: {response.status_code}")
+    print(f"NumMedia: {request.form.get('NumMedia')}")
     print(f"SendGrid response body: {response.body}")
 
 @app.route("/whatsapp", methods=["POST"])
