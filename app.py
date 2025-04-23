@@ -1,4 +1,3 @@
-
 from flask import Flask, request
 import os
 import requests
@@ -16,7 +15,6 @@ FROM_EMAIL = os.getenv("FROM_EMAIL")
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
-
 
 def send_email(subject, body, media_url=None, media_type=None):
     message = Mail(
@@ -37,19 +35,26 @@ def send_email(subject, body, media_url=None, media_type=None):
             print(f"Failed to fetch media: {response.status_code}")
         else:
             file_data = response.content
+            if len(file_data) < 100:
+                print(f"\u26a0\ufe0f Warning: very small file size ({len(file_data)} bytes)")
+
             encoded_file = base64.b64encode(file_data).decode()
+
+            filename = "attachment." + media_type.split("/")[-1]
+            print(f"Attachment: {filename}")
 
             attachment = Attachment(
                 FileContent(encoded_file),
-                FileName("attachment." + media_type.split("/")[-1]),
+                FileName(filename),
                 FileType(media_type),
                 Disposition("attachment")
             )
             message.attachment = attachment
 
     sg = SendGridAPIClient(SENDGRID_API_KEY)
-    sg.send(message)
-
+    response = sg.send(message)
+    print(f"SendGrid response code: {response.status_code}")
+    print(f"SendGrid response body: {response.body}")
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_webhook():
@@ -71,7 +76,6 @@ def whatsapp_webhook():
     send_email(subject, body, media_url, media_type)
 
     return "OK", 200
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
