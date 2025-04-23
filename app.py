@@ -87,7 +87,7 @@ for key in request.form:
 
     send_email(subject, body, media_url, media_type)
 
-    return "OK", 200
+        return "OK", 200
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
