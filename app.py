@@ -59,6 +59,11 @@ def send_email(subject, body, media_url=None, media_type=None):
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_webhook():
+        print("========== NEW WHATSAPP MESSAGE ==========")
+    print(f"NumMedia: {request.form.get('NumMedia')}")
+    print(f"MediaUrl0: {request.form.get('MediaUrl0')}")
+    print(f"MediaContentType0: {request.form.get('MediaContentType0')}")
+
     sender = request.form.get("From", "")
     message = request.form.get("Body", "")
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
