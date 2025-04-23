@@ -56,7 +56,7 @@ def whatsapp_webhook():
         print(f"{key} => {request.form[key]}")
     print("------------------------------")
     print(f"Content length: {len(request.form)} bytes")
-
+print("📥 webhook triggered")
     print("=========== NEW WHATSAPP MESSAGE ===========")
     print(f"NumMedia: {request.form.get('NumMedia')}")
     print(f"MediaUrl0: {request.form.get('MediaUrl0')}")
