@@ -85,3 +85,45 @@ def whatsapp_webhook():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
+if __name__ == "__main__":
+    from sendgrid import SendGridAPIClient
+    from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
+    import requests
+    import base64
+    import os
+
+    # פרטי הסביבה
+    TO_EMAIL = os.getenv("TO_EMAIL")
+    FROM_EMAIL = os.getenv("FROM_EMAIL")
+    SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+
+    # פרטי הקובץ לבדיקה
+    image_url = "https://upload.wikimedia.org/wikipedia/commons/9/9a/Gull_portrait_ca_usa.jpg"
+    media_type = "image/jpeg"
+
+    # שליחה
+    def send_test_email_with_image():
+        response = requests.get(image_url)
+        encoded_file = base64.b64encode(response.content).decode()
+
+        attachment = Attachment(
+            FileContent(encoded_file),
+            FileName("test_image.jpg"),
+            FileType(media_type),
+            Disposition("attachment")
+        )
+
+        message = Mail(
+            from_email=FROM_EMAIL,
+            to_emails=TO_EMAIL,
+            subject="📸 Test Image from Script",
+            plain_text_content="This is a test email with image attachment."
+        )
+        message.attachment = attachment
+
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        sg.send(message)
+        print("✅ Test email sent!")
+
+    send_test_email_with_image()
