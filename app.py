@@ -16,6 +16,7 @@ SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 
+
 def send_email(subject, body, media_url=None, media_type=None):
     message = Mail(
         from_email=FROM_EMAIL,
@@ -26,7 +27,6 @@ def send_email(subject, body, media_url=None, media_type=None):
 
     if media_url:
         response = requests.get(media_url, auth=HTTPBasicAuth(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN))
-
         print(f"Status: {response.status_code}")
         print(f"Headers: {response.headers}")
         print(f"Content length: {len(response.content)}")
@@ -35,37 +35,29 @@ def send_email(subject, body, media_url=None, media_type=None):
             print(f"Failed to fetch media: {response.status_code}")
         else:
             file_data = response.content
-            if len(file_data) < 100:
-                print(f"\u26a0\ufe0f Warning: very small file size ({len(file_data)} bytes)")
-
             encoded_file = base64.b64encode(file_data).decode()
-
-            filename = "attachment." + media_type.split("/")[-1]
-            print(f"Attachment: {filename}")
 
             attachment = Attachment(
                 FileContent(encoded_file),
-                FileName(filename),
+                FileName("attachment." + media_type.split("/")[-1]),
                 FileType(media_type),
                 Disposition("attachment")
             )
             message.attachment = attachment
 
     sg = SendGridAPIClient(SENDGRID_API_KEY)
-    response = sg.send(message)
-    print(f"SendGrid response code: {response.status_code}")
-    print(f"NumMedia: {request.form.get('NumMedia')}")
-    print(f"SendGrid response body: {response.body}")
-    
+    sg.send(message)
+
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_webhook():
     print("------ Full request.form ------")
-for key in request.form:
-    print(f"{key} => {request.form[key]}")
-    print("-------------------------------")
-    print(f"Content length: {len(response.content)} bytes")
+    for key in request.form:
+        print(f"{key} => {request.form[key]}")
+    print("------------------------------")
+    print(f"Content length: {len(request.form)} bytes")
 
-    print("========== NEW WHATSAPP MESSAGE ==========")
+    print("=========== NEW WHATSAPP MESSAGE ===========")
     print(f"NumMedia: {request.form.get('NumMedia')}")
     print(f"MediaUrl0: {request.form.get('MediaUrl0')}")
     print(f"MediaContentType0: {request.form.get('MediaContentType0')}")
@@ -87,7 +79,8 @@ for key in request.form:
 
     send_email(subject, body, media_url, media_type)
 
-return "OK", 200
+    return "OK", 200
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
